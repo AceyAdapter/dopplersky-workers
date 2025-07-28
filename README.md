@@ -20,8 +20,8 @@ This repository contains the backend services that power the analytics features 
 ### Installation
 
 ```bash
-git clone https://github.com/aceyadapter/dopplersky-bots
-cd dopplersky-bots
+git clone https://github.com/aceyadapter/dopplersky-workers
+cd dopplersky-workers
 pip install -r requirements.txt
 ```
 
