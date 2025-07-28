@@ -20,7 +20,6 @@ class AppConfig:
     """Application configuration."""
     database: DatabaseConfig
     max_workers: int
-    time_range_days: int
     bluesky_base_url: str
     log_level: str
     
@@ -48,7 +47,6 @@ class AppConfig:
                 port=int(os.getenv('DB_PORT', 5432))
             ),
             max_workers=int(os.getenv('MAX_WORKERS', 10)),
-            time_range_days=int(os.getenv('TIME_RANGE_DAYS', 7)),
             bluesky_base_url=os.getenv('BLUESKY_BASE_URL', 'https://public.api.bsky.app'),
             log_level=os.getenv('LOG_LEVEL', 'INFO')
         )
