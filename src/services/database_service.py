@@ -145,44 +145,29 @@ class DatabaseService:
             conn.commit()
     
     def upsert_snapshot(self, snapshot: SnapshotData) -> None:
-        """Insert or update a user snapshot."""
-        # Check if snapshot exists
-        check_query = """
-            SELECT FROM snapshots
-            WHERE did = %s AND date = %s
-            LIMIT 1
+        """Insert or update a user snapshot using atomic upsert."""
+        # Use INSERT ... ON CONFLICT to atomically insert or update
+        # This prevents race conditions when multiple threads process the same user/date
+        upsert_query = """
+            INSERT INTO snapshots 
+            (uuid, followers, following, posts, date, did, likes, replies, quotes, reposts)
+            VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (did, date) DO UPDATE SET
+                followers = EXCLUDED.followers,
+                following = EXCLUDED.following,
+                posts = EXCLUDED.posts,
+                likes = EXCLUDED.likes,
+                replies = EXCLUDED.replies,
+                quotes = EXCLUDED.quotes,
+                reposts = EXCLUDED.reposts
         """
         
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            self.safe_execute(cursor, check_query, (snapshot.did, snapshot.date))
-            existing = cursor.fetchone()
-            
-            if existing:
-                # Update existing snapshot
-                update_query = """
-                    UPDATE snapshots 
-                    SET followers = %s, following = %s, posts = %s, 
-                        likes = %s, replies = %s, quotes = %s, reposts = %s
-                    WHERE did = %s AND date = %s
-                """
-                self.safe_execute(cursor, update_query, (
-                    snapshot.followers, snapshot.following, snapshot.posts,
-                    snapshot.likes, snapshot.replies, snapshot.quotes, snapshot.reposts,
-                    snapshot.did, snapshot.date
-                ))
-            else:
-                # Insert new snapshot
-                insert_query = """
-                    INSERT INTO snapshots 
-                    (uuid, followers, following, posts, date, did, likes, replies, quotes, reposts)
-                    VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """
-                self.safe_execute(cursor, insert_query, (
-                    snapshot.followers, snapshot.following, snapshot.posts, snapshot.date,
-                    snapshot.did, snapshot.likes, snapshot.replies, snapshot.quotes, snapshot.reposts
-                ))
-            
+            self.safe_execute(cursor, upsert_query, (
+                snapshot.followers, snapshot.following, snapshot.posts, snapshot.date,
+                snapshot.did, snapshot.likes, snapshot.replies, snapshot.quotes, snapshot.reposts
+            ))
             conn.commit()
     
     def create_snapshot_log(self) -> int:
