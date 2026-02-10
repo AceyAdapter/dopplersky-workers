@@ -15,11 +15,16 @@ class PostService:
         self.database_service = database_service
         self.logger = logging.getLogger(__name__)
     
-    def get_posts_for_actor(self, actor: str, cursor: str = "", 
-                           posts: pd.DataFrame = None, fetch_all: bool = False) -> pd.DataFrame:
+    def get_posts_for_actor(self, actor: str, cursor: str = "",
+                           posts: pd.DataFrame = None, fetch_all: bool = False,
+                           _depth: int = 0) -> pd.DataFrame:
         """Get posts for an actor from Bluesky API."""
         if posts is None:
             posts = pd.DataFrame()
+
+        if _depth >= 250:
+            self.logger.warning(f"Hit max pages (250) for {actor}, returning {len(posts)} posts")
+            return posts
         
         try:
             response = self.bluesky_client._call_endpoint(
@@ -39,7 +44,7 @@ class PostService:
             # Recursive call if more posts available
             if 'cursor' in response and len(posts) < 10000:
                 if fetch_all:
-                    posts = self.get_posts_for_actor(actor, response['cursor'], posts, fetch_all)
+                    posts = self.get_posts_for_actor(actor, response['cursor'], posts, fetch_all, _depth + 1)
                 else:
                     # For regular updates, only fetch recent posts (last 7 days)
                     now = datetime.now(timezone.utc)
@@ -49,7 +54,7 @@ class PostService:
                     ).replace(tzinfo=timezone.utc)
                     
                     if cursor_datetime > time_range:
-                        posts = self.get_posts_for_actor(actor, response['cursor'], posts, fetch_all)
+                        posts = self.get_posts_for_actor(actor, response['cursor'], posts, fetch_all, _depth + 1)
             
             return posts
             
